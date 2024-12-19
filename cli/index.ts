@@ -34,6 +34,7 @@ yargs(hideBin(process.argv))
         rpcUrl,
         chainId: argv.chain as number,
         projectPath: argv.projectPath as string,
+        verbose: argv.verbose as boolean,
       });
     },
   )
@@ -44,6 +45,7 @@ yargs(hideBin(process.argv))
     default: "http://localhost:8545",
     // default: "https://sepolia.optimism.io",
   })
+  .demandOption("rpc-url", "Please provide a RPC endpoint")
   .option("chain", {
     alias: "c",
     type: "string",
@@ -64,7 +66,12 @@ yargs(hideBin(process.argv))
     description: "Foundry/Hardhat project path to load SolC artifacts from",
     default: process.cwd(),
   })
-  .demandOption("rpc-url", "Please provide a RPC endpoint")
+  .option("verbose", {
+    alias: "v",
+    type: "boolean",
+    description: "Run with verbose logging",
+    default: false,
+  })
   .demandCommand()
   .scriptName("walnut-lite")
   .help()

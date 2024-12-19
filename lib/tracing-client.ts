@@ -3,14 +3,16 @@ import {
   DebugTraceCallParams,
   DebugTraceTransactionParams,
 } from "tevm/actions";
-import { TraceResult, TraceCall } from "@/lib/types";
+import { RawTraceCall, TraceCall, rawTraceCallToTraceCall } from "@/lib/types";
 
 export const createTracingClient = (rpcUrl: string) =>
   createPublicClient({
     transport: http(rpcUrl),
   }).extend((client) => ({
-    async traceCall(args: DebugTraceCallParams & { blockHash?: Hash }) {
-      return client.request({
+    async traceCall(
+      args: DebugTraceCallParams & { blockHash?: Hash },
+    ): Promise<TraceCall | null> {
+      const traceCallResult = await client.request({
         // @ts-ignore
         method: "debug_traceCall",
         params: [
@@ -20,11 +22,17 @@ export const createTracingClient = (rpcUrl: string) =>
           { tracer: args.tracer },
         ],
       });
+      if (!traceCallResult) {
+        return null;
+      }
+      return rawTraceCallToTraceCall(
+        traceCallResult as unknown as RawTraceCall,
+      );
     },
     async traceTransaction(
       args: DebugTraceTransactionParams,
-    ): Promise<TraceResult> {
-      return client.request({
+    ): Promise<TraceCall | null> {
+      const traceTransactionResult = await client.request({
         // @ts-ignore
         method: "debug_traceTransaction",
         params: [
@@ -33,22 +41,14 @@ export const createTracingClient = (rpcUrl: string) =>
           { tracer: args.tracer, tracerConfig: args.tracerConfig },
         ],
       });
+      if (!traceTransactionResult) {
+        return null;
+      }
+      return rawTraceCallToTraceCall(
+        traceTransactionResult as unknown as RawTraceCall,
+      );
     },
   }));
-
-export const traceResultToTraceCall = (
-  traceResult: TraceResult,
-): TraceCall => ({
-  type: traceResult.type,
-  from: traceResult.from,
-  to: traceResult.to,
-  gas: traceResult.gas,
-  gasUsed: traceResult.gasUsed,
-  input: traceResult.input,
-  output: traceResult.output,
-  calls: traceResult.calls,
-  value: traceResult.value,
-});
 
 const flattenTraceCalls = (traceCalls: TraceCall[]) =>
   traceCalls.reduce<TraceCall[]>((accumulator, currentValue) => {
@@ -59,11 +59,11 @@ const flattenTraceCalls = (traceCalls: TraceCall[]) =>
     return accumulator;
   }, []);
 
-export const flattenTraceResult = (traceResult: TraceResult) => {
+export const flattenTraceCall = (traceCall: TraceCall) => {
   const result = [];
-  result.push(traceResultToTraceCall(traceResult));
-  if (traceResult.calls) {
-    result.push(...flattenTraceCalls(traceResult.calls));
+  result.push(traceCall);
+  if (traceCall.calls) {
+    result.push(...flattenTraceCalls(traceCall.calls));
   }
   return result;
 };

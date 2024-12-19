@@ -1,44 +1,79 @@
 import { Abi, Address, Hex } from "viem";
-import {
-  TraceResult as TevmTraceResult,
-  TraceCall as TevmTraceCall,
-} from "tevm/actions";
+import { TraceType } from "tevm/actions";
 import { SolcBytecodeOutput } from "tevm/bundler/solc";
 import { Metadata } from "@ethereum-sourcify/lib-sourcify";
+import { whatsabi } from "@shazow/whatsabi";
 
 export type CliOptions = {
   rpcUrl: string;
   chainId: number;
   projectPath: string;
+  verbose: boolean;
 };
-
-export type ContractInfo = {
-  name: string;
-  match: "partial" | "perfect" | null;
-  evmVersion: string;
-  compilerVersion: string;
-  optimizer: { enabled: boolean; runs: number };
-  license: string;
-  language: string;
-};
-
-export type ContractSource = { path: string; content: string };
-
-export type ContractSources = ContractSource[];
 
 export type Contract = {
   address: Address;
-  info: ContractInfo;
-  sources: ContractSources;
+  bytecode: Hex;
+  name: string;
+  sources: whatsabi.loaders.ContractSources;
   abi: Abi;
 };
 
 export type Artifact = {
   abi: Abi;
+  bytecode: SolcBytecodeOutput;
   deployedBytecode: SolcBytecodeOutput;
   metadata: Metadata;
 };
 
-export type TraceResult = Omit<TevmTraceResult, "output"> & { output?: Hex };
+export type RawTraceLog = {
+  address: Address;
+  topics: [Hex, ...Hex[]] | [];
+  data: Hex;
+  position: Hex;
+};
 
-export type TraceCall = Omit<TevmTraceCall, "output"> & { output?: Hex };
+export type RawTraceCall = {
+  type: TraceType;
+  from: Address;
+  to: Address;
+  value?: Hex;
+  gas: Hex;
+  gasUsed: Hex;
+  input: Hex;
+  output?: Hex;
+  error?: string;
+  logs?: RawTraceLog[];
+  calls?: RawTraceCall[];
+};
+
+export type TraceLog = Omit<RawTraceLog, "position"> & {
+  position: number;
+};
+
+export type TraceCall = Omit<
+  RawTraceCall,
+  "value" | "gas" | "gasUsed" | "logs" | "calls"
+> & {
+  value?: bigint;
+  gas: bigint;
+  gasUsed: bigint;
+  logs?: TraceLog[];
+  calls?: TraceCall[];
+};
+
+export const rawTraceLogToTraceLog = (traceLog: RawTraceLog): TraceLog => ({
+  ...traceLog,
+  position: Number(traceLog.position),
+});
+
+export const rawTraceCallToTraceCall = (
+  traceCall: RawTraceCall,
+): TraceCall => ({
+  ...traceCall,
+  value: traceCall.value ? BigInt(traceCall.value) : undefined,
+  gas: BigInt(traceCall.gas),
+  gasUsed: BigInt(traceCall.gasUsed),
+  logs: traceCall.logs?.map(rawTraceLogToTraceLog),
+  calls: traceCall.calls?.map(rawTraceCallToTraceCall),
+});
