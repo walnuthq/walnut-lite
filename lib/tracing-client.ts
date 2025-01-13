@@ -1,4 +1,10 @@
-import { createPublicClient, http, formatTransactionRequest, Hash } from "viem";
+import {
+  createPublicClient,
+  http,
+  formatTransactionRequest,
+  BlockTag,
+  Hash,
+} from "viem";
 import {
   DebugTraceCallParams,
   DebugTraceTransactionParams,
@@ -10,19 +16,32 @@ export const createTracingClient = (rpcUrl: string) =>
     transport: http(rpcUrl),
   }).extend((client) => ({
     async traceCall(
-      args: DebugTraceCallParams & { blockHash?: Hash },
+      args: DebugTraceCallParams & {
+        blockNrOrHash: `0x${string}` | Hash | BlockTag;
+        txIndex: number;
+      },
     ): Promise<TraceCall | null> {
       const traceCallResult = await client.request({
         // @ts-ignore
         method: "debug_traceCall",
         params: [
           formatTransactionRequest(args),
-          args.blockHash ?? "latest",
-          // @ts-ignore
-          { tracer: args.tracer },
+          args.blockNrOrHash,
+          {
+            // @ts-ignore
+            tracer: args.tracer,
+            tracerConfig: args.tracerConfig,
+            txIndex: args.txIndex,
+          },
         ],
       });
       if (!traceCallResult) {
+        return null;
+      }
+      const rawTraceCallResult = traceCallResult as unknown as {
+        gas: number;
+      };
+      if (rawTraceCallResult.gas === 0) {
         return null;
       }
       return rawTraceCallToTraceCall(
@@ -42,6 +61,12 @@ export const createTracingClient = (rpcUrl: string) =>
         ],
       });
       if (!traceTransactionResult) {
+        return null;
+      }
+      const rawTraceTransactionResult = traceTransactionResult as unknown as {
+        gas: number;
+      };
+      if (rawTraceTransactionResult.gas === 0) {
         return null;
       }
       return rawTraceCallToTraceCall(

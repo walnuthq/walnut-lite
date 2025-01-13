@@ -17,7 +17,7 @@ const trace = async (hash: Hash, options: CliOptions) => {
     options.projectPath ? loadArtifacts(options.projectPath) : [],
   ]);
   if (!traceTransactionResult) {
-    console.error("ERROR: debug_traceTransaction returned null");
+    console.error("ERROR: debug_traceTransaction failed");
     return;
   }
   // DEBUG

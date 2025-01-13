@@ -1,4 +1,4 @@
-import { Abi, Address, Hex } from "viem";
+import { Abi, Address, Hex, BlockTag, Hash } from "viem";
 import { TraceType } from "tevm/actions";
 import { SolcBytecodeOutput } from "tevm/bundler/solc";
 import { Metadata } from "@ethereum-sourcify/lib-sourcify";
@@ -8,6 +8,8 @@ export type CliOptions = {
   rpcUrl: string;
   chainId: number;
   projectPath: string;
+  block: `0x${string}` | Hash | BlockTag;
+  txIndex?: number;
   verbose: boolean;
 };
 

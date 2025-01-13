@@ -102,16 +102,21 @@ export const fetchContract = async (
   const provider = whatsabi.providers.WithCachedCode(publicClient, {
     [address]: bytecode,
   });
+  const abiLoaders: whatsabi.loaders.ABILoader[] = [
+    new FoundryABILoader({
+      provider,
+      projectPath: options.projectPath,
+      artifacts,
+    }),
+  ];
+  if (!options.rpcUrl.includes("localhost")) {
+    abiLoaders.push(
+      new whatsabi.loaders.SourcifyABILoader({ chainId: options.chainId }),
+    );
+  }
   const result = await whatsabi.autoload(address, {
     provider,
-    abiLoader: new whatsabi.loaders.MultiABILoader([
-      new FoundryABILoader({
-        provider,
-        projectPath: options.projectPath,
-        artifacts,
-      }),
-      new whatsabi.loaders.SourcifyABILoader({ chainId: options.chainId }),
-    ]),
+    abiLoader: new whatsabi.loaders.MultiABILoader(abiLoaders),
     loadContractResult: true,
   });
   if (result.contractResult) {
